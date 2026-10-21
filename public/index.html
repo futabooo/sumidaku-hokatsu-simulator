@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="墨田区の利用調整基準で世帯の指数と優先順位を計算し、過去の一次利用調整結果と照らして0歳・1歳クラスの入園の見込みを確認できる非公式ツール。">
+<meta name="theme-color" content="#006874">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>墨田区 保活シミュレーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Roboto:wght@400;500;700&family=Roboto+Flex:opsz,wght@8..144,400;8..144,600&display=swap">
+<style>
+/* Material Design 3 ベース。シード色: ティール（#006874）。トップのバナー → 入力カード（クラス・場所・基準・調整・優先）→ 合計 → 園リスト。下部に Bottom app bar */
+:root{
+  /* M3 color roles (light) */
+  --md-primary:#006874; --md-on-primary:#ffffff; --md-primary-container:#9eeffd; --md-on-primary-container:#001f24;
+  --md-secondary-container:#cde7ec; --md-on-secondary-container:#051f23;
+  --md-tertiary-container:#dbe1ff; --md-on-tertiary-container:#00174b;
+  --md-surface:#f5fafb; --md-surface-lowest:#ffffff; --md-surface-low:#eff5f6; --md-surface-container:#e9eff0; --md-surface-high:#e3e9ea; --md-surface-highest:#dee3e5;
+  --md-on-surface:#171d1e; --md-on-surface-variant:#3f484a; --md-outline:#6f797a; --md-outline-variant:#bfc8ca;
+  --md-success:#2a6a2f; --md-success-container:#b1f1a9; --md-on-success-container:#002204;
+  --md-warning:#7a5900; --md-warning-container:#ffdea3; --md-on-warning-container:#261900;
+  --md-error:#ba1a1a; --md-error-container:#ffdad6; --md-on-error-container:#410002;
+  --md-neutral-container:#e3e9ea; --md-on-neutral-container:#3f484a;
+  --md-shadow:rgba(0,0,0,.3); --md-shadow2:rgba(0,0,0,.15);
+  /* aliases used by the script */
+  --edge:var(--md-warning); --in:var(--md-success); --out:var(--md-error);
+  --f-brand:"Roboto Flex","Roboto","Noto Sans JP",system-ui,sans-serif;
+  --f-plain:"Roboto","Noto Sans JP","Hiragino Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --md-primary:#82d3e0; --md-on-primary:#00363d; --md-primary-container:#004f58; --md-on-primary-container:#9eeffd;
+  --md-secondary-container:#334b4f; --md-on-secondary-container:#cde7ec;
+  --md-tertiary-container:#2f4578; --md-on-tertiary-container:#dbe1ff;
+  --md-surface:#0e1415; --md-surface-lowest:#090f10; --md-surface-low:#171d1e; --md-surface-container:#1b2122; --md-surface-high:#252b2c; --md-surface-highest:#303637;
+  --md-on-surface:#dee3e5; --md-on-surface-variant:#bfc8ca; --md-outline:#899294; --md-outline-variant:#3f484a;
+  --md-success:#96d58f; --md-success-container:#145218; --md-on-success-container:#b1f1a9;
+  --md-warning:#f7be3f; --md-warning-container:#5c4200; --md-on-warning-container:#ffdea3;
+  --md-error:#ffb4ab; --md-error-container:#93000a; --md-on-error-container:#ffdad6;
+  --md-neutral-container:#303637; --md-on-neutral-container:#bfc8ca;
+  --md-shadow:rgba(0,0,0,.6); --md-shadow2:rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --md-primary:#82d3e0; --md-on-primary:#00363d; --md-primary-container:#004f58; --md-on-primary-container:#9eeffd;
+  --md-secondary-container:#334b4f; --md-on-secondary-container:#cde7ec;
+  --md-tertiary-container:#2f4578; --md-on-tertiary-container:#dbe1ff;
+  --md-surface:#0e1415; --md-surface-lowest:#090f10; --md-surface-low:#171d1e; --md-surface-container:#1b2122; --md-surface-high:#252b2c; --md-surface-highest:#303637;
+  --md-on-surface:#dee3e5; --md-on-surface-variant:#bfc8ca; --md-outline:#899294; --md-outline-variant:#3f484a;
+  --md-success:#96d58f; --md-success-container:#145218; --md-on-success-container:#b1f1a9;
+  --md-warning:#f7be3f; --md-warning-container:#5c4200; --md-on-warning-container:#ffdea3;
+  --md-error:#ffb4ab; --md-error-container:#93000a; --md-on-error-container:#ffdad6;
+  --md-neutral-container:#303637; --md-on-neutral-container:#bfc8ca;
+  --md-shadow:rgba(0,0,0,.6); --md-shadow2:rgba(0,0,0,.3); color-scheme:dark}
+
+body{background:var(--md-surface);color:var(--md-on-surface);font-family:var(--f-plain);font-size:14px;line-height:20px;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.wrap{max-width:840px;margin:0 auto;padding-block:16px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+
+/* Typescale */
+h1{font-family:var(--f-brand);font-weight:400;font-size:32px;line-height:40px;margin:0;text-wrap:balance}
+h2{font-family:var(--f-brand);font-weight:500;font-size:22px;line-height:28px;margin:0;text-wrap:balance}
+h3{font-size:14px;line-height:20px;font-weight:500;margin:4px 0 0;color:var(--md-on-surface-variant);letter-spacing:.006em}
+.lead{color:var(--md-on-surface-variant);margin:8px 0 0;font-size:16px;line-height:24px;max-width:65ch}
+header{display:flex;flex-direction:column;gap:12px;padding-block:8px}
+
+/* Banner (unofficial) */
+.unofficial{margin:0;display:flex;gap:12px;align-items:flex-start;background:var(--md-tertiary-container);color:var(--md-on-tertiary-container);border-radius:12px;padding:12px 16px;font-size:14px;line-height:20px;font-weight:500}
+.unofficial::before{content:"i";flex:none;width:20px;height:20px;border-radius:50%;border:2px solid currentColor;box-sizing:border-box;display:grid;place-items:center;font:700 12px/1 var(--f-plain);margin-top:0}
+
+/* Cards */
+.panel{background:var(--md-surface-low);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.step{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.step .no{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--md-primary-container);color:var(--md-on-primary-container);font:500 14px/1 var(--f-plain);font-variant-numeric:tabular-nums;flex:none}
+.step .ref,a.ref{margin-left:auto;font-size:14px;font-weight:500;color:var(--md-primary);text-decoration:none;padding:8px 12px;border-radius:20px}
+a.ref:hover{background:color-mix(in srgb,var(--md-primary) 8%,transparent)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}
+
+/* Outlined text fields */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.label{font-size:12px;line-height:16px;font-weight:500;color:var(--md-on-surface-variant);letter-spacing:.03em}
+select,input[type=date],input[type=number]{font:inherit;font-size:16px;line-height:24px;color:var(--md-on-surface);background:var(--md-surface-lowest);border:1px solid var(--md-outline);border-radius:4px;padding:15px 16px;width:100%;min-width:0;box-sizing:border-box;min-height:56px;appearance:none;-webkit-appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--md-on-surface-variant) 50%),linear-gradient(135deg,var(--md-on-surface-variant) 50%,transparent 50%);background-position:calc(100% - 22px) 50%,calc(100% - 17px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:40px}
+select:hover,input:hover{border-color:var(--md-on-surface)}
+select:focus,input:focus{outline:none;border-color:var(--md-primary);box-shadow:inset 0 0 0 1px var(--md-primary)}
+button:focus-visible,a:focus-visible,.opt:focus-within{outline:3px solid var(--md-primary);outline-offset:2px}
+.pts{font-size:12px;line-height:16px;color:var(--md-on-surface-variant);padding-left:16px}
+.pts b{color:var(--md-on-surface);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* Lists with checkbox / radio */
+.group{display:flex;flex-direction:column;gap:0;background:var(--md-surface-lowest);border-radius:12px;overflow:hidden}
+.group:empty{display:none}
+.opt{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:12px 16px;cursor:pointer;font-size:14px;line-height:20px;position:relative;border-bottom:1px solid var(--md-outline-variant)}
+.opt:last-child{border-bottom:0}
+.opt:hover{background:color-mix(in srgb,var(--md-on-surface) 6%,transparent)}
+.opt:has(input:checked){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.opt input{margin:0;width:18px;height:18px;accent-color:var(--md-primary)}
+.opt .v{font:500 14px/20px var(--f-plain);font-variant-numeric:tabular-nums;white-space:nowrap}
+.opt small{display:block;color:var(--md-on-surface-variant);font-size:12px;line-height:16px;margin-top:2px}
+.opt:has(input:checked) small{color:inherit;opacity:.8}
+.plus{color:var(--md-success)} .minus{color:var(--md-error)}
+
+/* Segmented button */
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--md-outline);border-radius:20px;overflow:hidden;max-width:420px;width:100%}
+.seg button{font:500 14px/20px var(--f-plain);letter-spacing:.01em;border:0;border-left:1px solid var(--md-outline);background:transparent;color:var(--md-on-surface);height:40px;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.seg button:first-child{border-left:0}
+.seg button:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}
+.seg button[aria-pressed="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.seg button[aria-pressed="true"]::before{content:"";width:12px;height:7px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translate(1px,-2px)}
+
+/* Result */
+.result{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;background:var(--md-surface-lowest);border-radius:12px;padding:16px 20px}
+.total{font-family:var(--f-brand);font-weight:400;font-size:57px;line-height:64px;color:var(--md-primary);font-variant-numeric:tabular-nums}
+.total small{font-size:22px;margin-left:4px}
+.breakdown{font-size:14px;line-height:20px;display:flex;flex-direction:column;min-width:0}
+.breakdown div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--md-outline-variant);padding-block:6px}
+.breakdown div:last-child{border-bottom:0}
+.breakdown span:last-child{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.warn{font-size:14px;line-height:20px;color:var(--md-on-warning-container);background:var(--md-warning-container);border-radius:12px;padding:12px 16px;margin:0}
+.warn:empty{display:none}
+.caution{margin:0;font-size:12px;line-height:16px;color:var(--md-on-surface-variant)}
+
+/* Filter chips with counts */
+.summary{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 14px/20px var(--f-plain);border:1px solid var(--md-outline);border-radius:8px;min-height:40px;padding:0 16px;cursor:pointer;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:8px}
+.chip:hover{background:color-mix(in srgb,var(--md-on-surface-variant) 8%,transparent)}
+.chip b{font-weight:700;font-variant-numeric:tabular-nums;order:2}
+.chip span{order:1;color:inherit;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
+.chip[aria-pressed="true"]::before{content:"";order:0;width:10px;height:6px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-2px)}
+.c-in b{color:var(--md-success)} .c-edge b{color:var(--md-warning)} .c-out b{color:var(--md-error)}
+
+/* Facility list */
+.area{display:flex;flex-direction:column;gap:12px}
+.area h2{display:flex;flex-direction:column;gap:2px;padding:8px 4px 0}
+.area h2 small{font:400 14px/20px var(--f-plain);color:var(--md-on-surface-variant)}
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--md-surface-lowest);border:1px solid var(--md-outline-variant);border-radius:12px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:start}
+.card .name{font:500 16px/24px var(--f-plain);min-width:0}
+.card .meta{grid-column:1/-1;font-size:12px;line-height:16px;color:var(--md-on-surface-variant);display:flex;flex-wrap:wrap;gap:4px 16px}
+.card .cut{grid-column:1/-1;font-size:14px;line-height:20px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.card .hist{grid-column:1/-1;font-size:12px;line-height:16px;color:var(--md-on-surface-variant)}
+.cut code{font:500 14px/20px var(--f-plain);background:var(--md-surface-container);padding:2px 8px;border-radius:8px;font-variant-numeric:tabular-nums}
+.why{color:var(--md-on-surface-variant);font-size:12px;line-height:16px}
+.pill{font:500 12px/16px var(--f-plain);letter-spacing:.04em;padding:6px 12px;border-radius:8px;white-space:nowrap}
+.p-in{background:var(--md-success-container);color:var(--md-on-success-container)}
+.p-edge{background:var(--md-warning-container);color:var(--md-on-warning-container)}
+.p-out{background:var(--md-error-container);color:var(--md-on-error-container)}
+.p-na{background:var(--md-neutral-container);color:var(--md-on-neutral-container)}
+.flag{font:500 11px/16px var(--f-plain);color:var(--md-on-warning-container);background:var(--md-warning-container);border-radius:4px;padding:0 6px}
+.years{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.yr{display:flex;flex-direction:column;align-items:flex-start;padding:6px 8px;border-radius:8px;font-size:11px;line-height:15px;min-width:0;border:2px solid transparent}
+.yr i{font-style:normal;font-weight:700;letter-spacing:.04em}
+.yr b{font-weight:400;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.y-in{background:var(--md-success-container);color:var(--md-on-success-container)}
+.y-edge{background:var(--md-warning-container);color:var(--md-on-warning-container)}
+.y-out{background:var(--md-error-container);color:var(--md-on-error-container)}
+.y-na{background:var(--md-neutral-container);color:var(--md-on-neutral-container)}
+.yr.cur{border-color:currentColor}
+.legend{background:var(--md-surface-container);border-radius:12px;padding:16px;font-size:14px;line-height:20px;color:var(--md-on-surface-variant);display:flex;flex-direction:column;gap:8px}
+.legend p{margin:0}
+.legend .lg-title{font:500 16px/24px var(--f-plain);color:var(--md-on-surface)}
+.legend ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.legend li{display:flex;align-items:center;gap:12px;color:var(--md-on-surface)}
+.legend .yr{flex:none;width:36px;align-items:center;padding:6px 0}
+.empty{color:var(--md-on-surface-variant);font-size:14px;padding:8px 4px}
+
+/* Notes and sources */
+.note{font-size:14px;line-height:20px;color:var(--md-on-surface-variant);display:flex;flex-direction:column;gap:8px}
+.note p{margin:0}
+.note b{color:var(--md-on-surface);font-weight:500}
+.src{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:12px}
+.src a{color:var(--md-primary);font-weight:500}
+.src span{display:block;font-size:12px;line-height:16px;margin-top:2px}
+
+/* Bottom app bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--md-surface-container);box-shadow:0 -1px 3px var(--md-shadow2);padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar-in{max-width:840px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:14px;line-height:20px;color:var(--md-on-surface-variant)}
+.bar-in b{font-family:var(--f-brand);font-size:28px;line-height:36px;font-weight:400;color:var(--md-primary);font-variant-numeric:tabular-nums}
+.bar-in .cnt{display:flex;gap:12px;margin-left:auto;font-weight:500}
+.reset{font:500 14px/20px var(--f-plain);background:transparent;border:1px solid var(--md-outline);color:var(--md-primary);border-radius:20px;height:40px;padding:0 24px;cursor:pointer}
+.reset:hover{background:color-mix(in srgb,var(--md-primary) 8%,transparent)}
+
+@media (max-width:600px){
+  .two,.three{grid-template-columns:1fr}
+  .result{grid-template-columns:1fr;gap:12px}
+  .panel{padding:16px;border-radius:12px}
+  h1{font-size:28px;line-height:36px}
+  .bar-in .cnt{margin-left:0;width:100%;order:3}
+  .reset{margin-left:auto}
+}
+@media (max-width:440px){.years{grid-template-columns:repeat(3,1fr)}}
+@media (prefers-reduced-motion:no-preference){.opt,.chip,.seg button,.reset,a.ref{transition:background-color .15s ease,color .15s ease}}
+
+/* Accessibility helpers */
+.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:20;background:var(--md-primary);color:var(--md-on-primary);padding:10px 16px;border-radius:20px;font:500 14px/20px var(--f-plain);transform:translateY(-200%)}
+.skip:focus{transform:none}
+#results:focus{outline:none}
+.card h3.name{margin:0;color:var(--md-on-surface)}
+ul.years{list-style:none;margin:0;padding:0}
+.opt{min-height:48px;box-sizing:border-box}
+@media (max-height:520px){.bar{position:static}.wrap{padding-bottom:16px}}
+@media (forced-colors:active){.pill,.yr,.chip,.seg button,.opt,.card,.panel,.result,.legend,.group{border:1px solid CanvasText}.seg button[aria-pressed="true"],.chip[aria-pressed="true"],.opt:has(input:checked){outline:3px solid Highlight}}
+</style>
+</head>
+<body>
+<a class="skip" href="#results">結果へ移動</a>
+<main class="wrap" id="main">
+  <header>
+    <p class="unofficial">墨田区の公式ツールではありません。個人が区の公開資料をもとに作った非公式の目安です。このシミュレーターの結果と、実際の入園内定の結果は異なることがあります。</p>
+    <h1>墨田区 保活シミュレーター</h1>
+    <p class="lead">墨田区の利用調整基準に沿ってご家庭の状況を選ぶと、合計指数を計算し、4月一次の利用調整結果と比べて各園の見込みを出します。入力はこの端末の中だけで計算され、どこにも送られません。</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-age">
+    <h2 id="h-age">入園するクラス（令和9年4月1日時点の年齢）</h2>
+    <div class="seg" id="age" role="group" aria-labelledby="h-age">
+      <button type="button" id="age0" data-v="0" aria-pressed="true">0歳クラス</button>
+      <button type="button" id="age1" data-v="1" aria-pressed="false">1歳クラス</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-home">
+    <h2 id="h-home">住んでいる場所</h2>
+    <div class="three">
+      <div class="field"><label class="label" for="home">町丁目</label><select id="home"></select></div>
+      <div class="field"><label class="label" for="radius">表示する範囲</label><select id="radius"><option value="1">1km以内</option><option value="1.5">1.5km以内</option><option value="2">2km以内</option><option value="3">3km以内</option><option value="99">区内すべて</option></select></div>
+      <div class="field"><label class="label" for="sort">並び順</label><select id="sort"><option value="dist">近い順</option><option value="judge">見込みが良い順</option><option value="wins">過去に入れた割合順</option></select></div>
+    </div>
+    <p class="note" style="margin:0">距離は町丁目の中心どうしの直線距離の目安です（区の資料ではなく、このページの概算です）。実際の道のりとは異なります。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-base">
+    <div class="step"><span class="no">1</span><h2 id="h-base">父母の状況（基準指数）</h2><a class="ref" href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/riyou_annai/a.files/R8goannai.pdf" target="_blank" rel="noopener">区の案内 P25</a></div>
+    <div class="two">
+      <div class="field"><label class="label" for="baseF">父</label><select id="baseF"></select><span class="pts" id="ptsF"></span></div>
+      <div class="field"><label class="label" for="baseM">母</label><select id="baseM"></select><span class="pts" id="ptsM"></span></div>
+    </div>
+    <p class="note" style="margin:0">育休中の人は、休業前の働き方（就労）を選びます。自営・フリーランスは開業届や確定申告書などの書類が締切までに届かないと「内職」扱いになります。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-adj">
+    <div class="step"><span class="no">2</span><h2 id="h-adj">当てはまる加点・減点（調整指数）</h2><a class="ref" href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/riyou_annai/a.files/R8goannai.pdf" target="_blank" rel="noopener">区の案内 P26</a></div>
+    <div class="group" id="adjMain" role="group" aria-labelledby="h-adj"></div>
+    <div class="field" id="sibWrap" hidden><label class="label" for="sib">きょうだいが在園している園（15番の+3はこの園の判定だけに付けます）</label><select id="sib"></select></div>
+    <h3>ひとり親・生活保護（それぞれ1つまで）</h3>
+    <div class="group" id="adjSingle" role="radiogroup" aria-label="ひとり親"></div>
+    <div class="group" id="adjWelfare" role="radiogroup" aria-label="生活保護"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-pri">
+    <div class="step"><span class="no">3</span><h2 id="h-pri">同点のときの優先順位</h2><a class="ref" href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/riyou_annai/a.files/R8goannai.pdf" target="_blank" rel="noopener">区の案内 P27</a></div>
+    <div class="two">
+      <div class="field"><label class="label" for="kids">養育している子どもの人数（平成19年4月2日以降生まれ）</label><input type="number" id="kids" min="1" max="9" step="1"></div>
+      <div class="field"><label class="label" for="since">墨田区の「住民となった年月日」（夫婦で早い方）</label><input type="date" id="since"></div>
+    </div>
+    <div class="group" id="priGroup" role="group" aria-labelledby="h-pri"></div>
+    <p class="note" style="margin:0">父母の基準指数の合計（8番）、母の基準指数（9番）、母・父の類型（10・11番）は、上の入力から自動で使います。新規入所（12番）は全員が該当するとみなします。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-res">
+    <h2 id="h-res">合計指数</h2>
+    <div class="result">
+      <div class="total" id="total">0<small>点</small></div>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+    <p class="warn" id="warn"></p>
+    <p class="caution">判定は過去の一次利用調整結果と比べた目安です。実際の内定は、その年の募集数や申込み状況、提出書類の内容、区の判断によって決まるため、ここで「入れた」と出ても内定しないこと、「厳しい」と出ても内定することがあります。点数や書類の扱いは、墨田区の入園係や保育コンシェルジュで確認してください。</p>
+    <div class="summary" id="summary" role="group" aria-label="判定で絞り込む"></div>
+    <p class="sr" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="results" tabindex="-1" aria-label="保育園の一覧"><div id="areas"></div></section>
+
+  <section class="panel note" aria-label="判定の考え方">
+    <h2>判定の考え方</h2>
+    <p><b>入れた</b>：去年の下限より合計指数が高い。または同点で、優先順位で上回る。空きが残った園（－）や30点未満で決まった園も含みます。</p>
+    <p><b>境目</b>：同点で、優先順位も下限の世帯と同じ区分。または、下限の世帯がどの優先順位で決まったか公表されていない。</p>
+    <p><b>厳しい</b>：合計指数が低い。または同点でも、子どもの人数や住んでいる期間で下限の世帯に届かない。</p>
+    <p>同点のときは、優先順位1〜7番（単身赴任・保育士など）→ 8〜11番（父母の基準指数の合計・母の基準指数・母と父の類型）→ 子どもの人数（13番）→ 保育料の滞納（14番）→ 住んでいる期間（15番）の順に比べています。下限の世帯の1〜12番の状況は公表されていないため、1〜7番は該当なし、8〜11番は最上位（父母とも週40時間以上の就労で合計40点）、12番は新規入所とみなしています。そのため、8〜11番で最上位に届かない世帯は、同点の園を「入れた」ではなく「境目」と表示します。人数の書いていない下限は子ども1人の世帯とみなしています。</p>
+    <p>「R1-2」などは年度（4月〜翌3月）の区分と考え、住民となった年月日をその年度に当てはめています。区分の正確な意味は区に確認してください。</p>
+    <p><span class="flag">要確認</span> が付いた園は、元のPDFで該当クラスの欄の数字を特定しきれていません。1歳クラスは全園が対象です。申込み前に元の表で確かめてください。</p>
+    <p>点数の計算と判定の根拠は、下の墨田区の公式資料だけです。令和9年用の案内（10月30日配布予定）が出たら、基準に変更がないか確認してください。来年の結果を保証するものではありません。</p>
+  </section>
+
+  <section class="panel note" aria-labelledby="h-src">
+    <h2 id="h-src">引用元（すべて墨田区公式）</h2>
+    <ul class="src">
+      <li><a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/riyou_annai/a.files/R8goannai.pdf" target="_blank" rel="noopener">令和8年用 認可保育施設利用申込みのご案内</a><span>基準指数 P25、調整指数と注意事項 P26、優先順位 P27、園の所在地・0歳受入月齢・定員 P17〜22、育休期間の記入 P16</span></li>
+      <li><a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/2026riyoucyousei.pdf" target="_blank" rel="noopener">令和8年4月入園の第一次利用調整結果（入所下限合計指数）</a><span>各園の0歳クラスの下限と、表記の読み方</span></li>
+      <li><a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/2025riyoucyousei.pdf" target="_blank" rel="noopener">令和7年4月入園</a>・<a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/2024riyoucyousei-2.pdf" target="_blank" rel="noopener">令和6年</a>・<a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/2023riyoucyousei.pdf.pdf" target="_blank" rel="noopener">令和5年</a>・<a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/2022riyoucyousei.pdf" target="_blank" rel="noopener">令和4年</a>・<a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.files/riyouchousei.pdf" target="_blank" rel="noopener">令和3年</a>の第一次利用調整結果<span>各年の0歳クラスの下限。施設名の直後の値を0歳欄として読み取っています。その年に0歳の募集がなかった園は、1歳以上の値がずれて入っている可能性があります</span></li>
+      <li><a href="https://www.city.sumida.lg.jp/kosodate_kyouiku/kosodate_site/azukeru/hoikuen/nyuuen/shinsei_joukyou/ta80320020170821.html" target="_blank" rel="noopener">利用調整結果の一覧ページ</a><span>上の各年のPDFの掲載元</span></li>
+    </ul>
+    <p>このページ独自の部分：町丁目の距離（概算）、「R1-2」などを年度区分とみなす読み方、PDFの文字からの0歳・1歳欄の読み取り、同点時に下限の世帯を「該当なし」とみなす前提。</p>
+  </section>
+</main>
+
+<div class="bar" role="region" aria-label="合計指数と判定の件数">
+  <div class="bar-in">
+    <span>合計 <b id="barTotal">0</b> 点</span>
+    <span class="cnt" id="barCnt"></span>
+    <button type="button" class="reset" id="reset">初期値に戻す</button>
+  </div>
+</div>
+
+<script>
+/* ---------- 利用調整基準（令和8年用） ---------- */
+const BASE=[
+  {g:"就労（外勤・自営）",items:[
+    ["w20",20,"就労","週5日以上・週40時間以上"],["w18",18,"就労","週5日以上・週37時間以上"],["w16",16,"就労","週5日以上・週35時間以上"],
+    ["w14",14,"就労","週4日以上・週30時間以上"],["w12",12,"就労","週4日以上・週24時間以上"],["w10",10,"就労","週3日以上・週18時間以上"],["w8",8,"就労","週3日以上・週12時間以上"]]},
+  {g:"内職",items:[["home6",6,"就労","内職 週3日以上・日中週12時間以上"]]},
+  {g:"妊娠・出産",items:[["preg",5,"妊娠","妊娠中"],["birth",12,"出産","出産予定月の前後2か月"]]},
+  {g:"疾病・負傷",items:[["hosp",20,"疾病","入院（1か月以上）"],["sick20",20,"疾病","寝たきり・精神性・感染性疾病"],["sick14",14,"疾病","常時安静・週3日以上通院"],["sick8",8,"疾病","その他の療養"]]},
+  {g:"障害",items:[["dis20",20,"障害","身障1〜2級・愛の手帳・精神手帳"],["dis16",16,"障害","身障3級"],["dis12",12,"障害","身障4〜6級"]]},
+  {g:"介護・看護",items:[["care20",20,"介護","介護・付添い（週40時間相当）"],["care8",8,"介護","その他の介護・看護"]]},
+  {g:"求職活動",items:[["job12",12,"求職","週40時間以上の就労に内定"],["job10",10,"求職","週35時間以上の就労に内定"],["job6",6,"求職","週12時間以上の就労に内定"],["job4",4,"求職","その他の内定・就労先未定"]]},
+  {g:"就学",items:[["study20",20,"就学","通学（週40時間相当）"]]},
+  {g:"その他",items:[["disaster",20,"災害","災害復旧"],["dv",20,"虐待","虐待・DV"],["absent",20,"不存在","不存在（死亡・離別など）"]]}
+];
+const BASEMAP={};BASE.forEach(g=>g.items.forEach(([id,p,t,l])=>BASEMAP[id]={p,t,l}));
+const TYPEORDER={就労:1,出産:2,妊娠:3,疾病:4,障害:5,介護:6,災害:7,求職:8,就学:9,虐待:10,不存在:10};
+
+const ADJ=[
+  {k:"a21",n:21,v:2,t:"締切日時点で、どちらかが産休・育休中で復職予定",s:"就労の人だけ。18番と両方なら18番だけ。育休期間の始期と終期の両方が就労証明書に必要"},
+  {k:"a18",n:18,v:2,t:"申込む子を認可外・認証などに月極めで月48時間以上預けている",s:"保育施設受託証明書が必要。一時保育は対象外"},
+  {k:"a15",n:15,v:3,t:"きょうだいが在園している認可園に新規で申し込む",s:"その園を希望した場合だけ付く。上の子が4月に卒園・就学する場合は対象外"},
+  {k:"a16",n:16,v:1,t:"2人以上の子を同時に新規で申し込む"},
+  {k:"a11",n:11,v:2,t:"申込む子が双子以上（ともに新規）"},
+  {k:"a10",n:10,v:4,t:"申込む子が障害者手帳を持つ、または同程度の障害"},
+  {k:"a8",n:8,v:3,t:"保護者が入院していて保育できない",s:"基準指数が入院の人だけ"},
+  {k:"a9",n:9,v:6,t:"主に稼ぐ人が解雇・倒産で早急に就労が必要",s:"基準指数が求職活動の人だけ。自己都合退職は除く"},
+  {k:"a19",n:19,v:1,t:"就労している保護者が身障1〜3級などの手帳を持つ"},
+  {k:"a20",n:20,v:1,t:"就労している保護者が介護・看護で就労を制限している"},
+  {k:"a22",n:22,v:-2,t:"勤務実績が正規の勤務日数の50%以下の月がある（直近3か月）"},
+  {k:"a23",n:23,v:-2,t:"64歳以下の祖父母と同居していて、保育できない証明を出さない"},
+  {k:"a24",n:24,v:-5,t:"3か月以上の保育料の滞納がある"},
+  {k:"a25",n:25,v:-1,t:"墨田区には勤務地だけ・隣接区在住で区外から申し込む"}
+];
+const SINGLE=[["s0",0,"該当なし"],["s4",7,"4番 ひとり親・近く（100m以内）に保育できる祖父母なし"],["s5",3,"5番 ひとり親・近くに保育できる祖父母あり"],["s6",5,"6番 ひとり親に準ずる・近くに保育できる祖父母なし"],["s7",2,"7番 ひとり親に準ずる・近くに保育できる祖父母あり"]];
+const WELFARE=[["w0",0,"生活保護 該当なし"],["w1",6,"1番 生活保護を受けていて就労・就労内定"],["w2",4,"2番 生活保護を受けていて自立の意欲あり"],["w3",2,"3番 今後生活保護を受ける可能性が高い"]];
+const PRI=[
+  {k:"p1",n:1,t:"虐待やDVのおそれなど、緊急性が非常に高い"},
+  {k:"p3",n:3,t:"どちらかが単身赴任・海外赴任中（勤務先の証明あり）"},
+  {k:"p4",n:4,t:"同居の親族が障害者手帳を持つ、または要介護認定を受けている"},
+  {k:"p5",n:5,t:"保護者が保育士・保育教諭・放課後児童支援員として月120時間以上勤務"},
+  {k:"p6",n:6,t:"前年度の住民税が非課税"},
+  {k:"p7",n:7,t:"前年度の区民税所得割の合計が48,600円未満"},
+  {k:"p14",n:14,t:"保育料の滞納がない",def:true}
+];
+
+/* ---------- 町丁目の位置（中心の目安。距離の並び替え専用で、区の資料ではない） ---------- */
+const CHO={
+ "両国1":[35.6925,139.7880],"両国2":[35.6940,139.7895],"両国3":[35.6930,139.7920],"両国4":[35.6950,139.7930],
+ "千歳1":[35.6910,139.7905],"千歳2":[35.6905,139.7935],"千歳3":[35.6905,139.7960],
+ "緑1":[35.6945,139.7975],"緑2":[35.6940,139.8010],"緑3":[35.6940,139.8050],"緑4":[35.6945,139.8100],
+ "立川1":[35.6910,139.7980],"立川2":[35.6905,139.8010],"立川3":[35.6905,139.8045],"立川4":[35.6905,139.8090],
+ "菊川1":[35.6875,139.7995],"菊川2":[35.6875,139.8030],"菊川3":[35.6875,139.8065],
+ "江東橋1":[35.6950,139.8130],"江東橋2":[35.6950,139.8165],"江東橋3":[35.6925,139.8175],"江東橋4":[35.6930,139.8150],"江東橋5":[35.6900,139.8130],
+ "横網1":[35.6975,139.7930],"横網2":[35.6985,139.7960],
+ "亀沢1":[35.6985,139.7940],"亀沢2":[35.6985,139.7990],"亀沢3":[35.6985,139.8030],"亀沢4":[35.6985,139.8075],
+ "石原1":[35.7005,139.7935],"石原2":[35.7010,139.7975],"石原3":[35.7010,139.8020],"石原4":[35.7010,139.8065],
+ "太平1":[35.7010,139.8095],"太平2":[35.7000,139.8110],"太平3":[35.6990,139.8120],"太平4":[35.6995,139.8150],
+ "錦糸1":[35.7010,139.8135],"錦糸2":[35.7005,139.8165],"錦糸3":[35.6975,139.8140],"錦糸4":[35.6985,139.8175],
+ "本所1":[35.7055,139.8000],"本所2":[35.7055,139.8040],"本所3":[35.7060,139.8080],"本所4":[35.7055,139.8120],
+ "東駒形1":[35.7070,139.7985],"東駒形2":[35.7085,139.8010],"東駒形3":[35.7090,139.8040],"東駒形4":[35.7100,139.8060],
+ "吾妻橋1":[35.7085,139.7980],"吾妻橋2":[35.7075,139.8010],"吾妻橋3":[35.7095,139.8000],
+ "横川1":[35.7045,139.8115],"横川2":[35.7055,139.8145],"横川3":[35.7065,139.8165],"横川4":[35.7080,139.8165],"横川5":[35.7095,139.8185],
+ "業平1":[35.7095,139.8055],"業平2":[35.7090,139.8085],"業平3":[35.7085,139.8125],"業平4":[35.7080,139.8100],"業平5":[35.7075,139.8135],
+ "押上1":[35.7105,139.8125],"押上2":[35.7110,139.8170],"押上3":[35.7125,139.8205],
+ "向島1":[35.7130,139.8060],"向島2":[35.7145,139.8070],"向島3":[35.7155,139.8090],"向島4":[35.7160,139.8125],"向島5":[35.7190,139.8115],
+ "京島1":[35.7170,139.8175],"京島2":[35.7180,139.8210],"京島3":[35.7190,139.8240],
+ "文花1":[35.7140,139.8265],"文花2":[35.7165,139.8275],"文花3":[35.7180,139.8295],
+ "立花1":[35.7125,139.8310],"立花2":[35.7140,139.8335],"立花3":[35.7155,139.8345],"立花4":[35.7170,139.8360],"立花5":[35.7185,139.8370],"立花6":[35.7200,139.8395],
+ "東向島1":[35.7210,139.8125],"東向島2":[35.7220,139.8160],"東向島3":[35.7240,139.8170],"東向島4":[35.7260,139.8150],"東向島5":[35.7275,139.8185],"東向島6":[35.7295,139.8165],
+ "八広1":[35.7180,139.8230],"八広2":[35.7210,139.8240],"八広3":[35.7225,139.8270],"八広4":[35.7235,139.8300],"八広5":[35.7255,139.8320],"八広6":[35.7275,139.8290],
+ "東墨田1":[35.7230,139.8355],"東墨田2":[35.7245,139.8385],"東墨田3":[35.7270,139.8400],
+ "墨田1":[35.7310,139.8160],"墨田2":[35.7325,139.8180],"墨田3":[35.7340,139.8210],"墨田4":[35.7355,139.8220],"墨田5":[35.7375,139.8250],
+ "堤通1":[35.7305,139.8125],"堤通2":[35.7340,139.8150]
+};
+/* ---------- 園データ
+   園名・所在地・0歳受入月齢・0歳定員：墨田区「令和8年用 認可保育施設利用申込みのご案内」P17〜22
+   cut：墨田区「令和8年4月入園の第一次利用調整結果（入所下限合計指数）」の0歳クラス欄（PDFの文字を読み取ったもの）
+   f：PDFの文字から0歳欄を特定しきれていない園 ---------- */
+const DATA=[
+ ["江東橋保育園","緑4","緑4-35-9","生後57日以上",12,"40 R2-3",1],
+ ["横川橋保育園","太平1","太平1-27-13","満6か月以上",11,"42 R6-7"],
+ ["中川保育園","東墨田2","東墨田2-1-15","満6か月以上",9,"-",1],
+ ["たちばな保育園","立花3","立花3-21-16","生後57日以上",9,"-",1],
+ ["八広保育園","八広3","八広3-7-5","満6か月以上",12,"-",1],
+ ["東あずま保育園","立花1","立花1-27-6（仮園舎 立花2）","満6か月以上",9,"-",1],
+ ["おむらい保育園","文花1","文花1-32-1","満6か月以上",11,"-",1],
+ ["鐘ヶ淵北保育園","堤通2","堤通2-8-15","生後57日以上",12,"-"],
+ ["梅若保育園","墨田2","墨田2-38-13","生後57日以上",9,"▼30点未満"],
+ ["中川南保育園","立花6","立花6-8-2","満6か月以上",9,"-",1],
+ ["しらひげ保育園","堤通2","堤通2-5-5","満6か月以上",9,"-",1],
+ ["横川さくら保育園（2歳まで）","横川5","横川5-9-1","生後57日以上",15,"-",1],
+ ["押上保育園","押上2","押上2-10-17","生後57日以上",9,"42 H29-30"],
+ ["亀沢保育園","亀沢1","亀沢1-27-5","満6か月以上",12,"42 R3-4"],
+ ["長浦保育園","八広5","八広5-10-1","生後57日以上",12,"▼30点未満"],
+ ["墨田みどり保育園","亀沢3","亀沢3-7-11","満8か月以上",3,"45 2人/H29-30"],
+ ["墨田みどり保育園分園","亀沢3","亀沢3-6-1","満8か月以上",3,"42 H1-9"],
+ ["ほがらか保育園","墨田4","墨田4-30-14","満6か月以上",4,"-"],
+ ["光の園保育学校（両国駅前分園）","両国4","両国4-37-6","生後43日以上",12,"-",1],
+ ["厚生館保育園","立花5","立花5-21-3","生後43日以上",9,"42 R3-4"],
+ ["共愛館保育園（認定こども園）","押上3","押上3-53-6","生後43日以上",12,"32",1],
+ ["菊川保育園","江東橋5","江東橋5-3-3","満3か月以上",9,"42 R3-4"],
+ ["興望館こども園","京島1","京島1-11-6","生後43日以上",15,"34",1],
+ ["東京愛育苑さゆり保育園","東向島6","東向島6-7-8","満4か月以上",8,"42 R4-5"],
+ ["木ノ下保育園","墨田4","墨田4-60-13","満6か月以上",3,"42 H27-28",1],
+ ["杉の子学園保育所","東向島2","東向島2-13-6","満4か月以上",6,"▼30点未満",1],
+ ["ナースリー保育園","東向島6","東向島6-15-5","生後43日以上",10,"42 R4-5",1],
+ ["育正保育園","東駒形1","東駒形1-3-15","生後43日以上",9,"42 R6-7"],
+ ["こひつじ保育園","緑2","緑2-23-3","生後57日以上",6,"42 子3人以上"],
+ ["わらべみどり保育園","緑3","緑3-12-2","生後57日以上",9,"42 R6-7"],
+ ["すみだ中和こころ保育園","菊川1","菊川1-18-5","生後57日以上",6,"42 R4-5",1],
+ ["両国・なかよし保育園","両国1","両国1-10-7","生後57日以上",9,"42 R3-4"],
+ ["小梅保育園","向島3","向島3-42-1","生後57日以上",6,"42 子の人数より上",1],
+ ["すみだ川のほとりに笑顔咲くほいくえん","立川2","立川2-12-16","生後57日以上",6,"42 H30-R1"],
+ ["まなびの森保育園錦糸町","太平2","太平2-4-4","生後57日以上",6,"42 R4-5"],
+ ["グローバルキッズ押上園","押上2","押上2-19-20","生後57日以上",9,"40 H25-26",1],
+ ["両国すきっぷ保育園","両国4","両国4-25-9","生後57日以上",9,"42 R6-7",1],
+ ["のびのび保育園","千歳3","千歳3-8-13","生後43日以上",8,"-",1],
+ ["すこやか錦糸保育園","錦糸3","錦糸3-7-1","生後43日以上",12,"42 R5-6",1],
+ ["AIAI NURSERY 錦糸町","亀沢4","亀沢4-5-4","満3か月以上",6,"42 R6-7"],
+ ["うぃず東駒形保育園","東駒形2","東駒形2-9-9","生後57日以上",6,"43 2人/R6-7",1],
+ ["ベネッセ 菊川北保育園","立川4","立川4-10-9","生後57日以上",6,"42 H29-30",1],
+ ["小学館アカデミーひきふね駅前保育園","京島1","京島1-1-1","生後57日以上",9,"42 R3-4",1],
+ ["チェリッシュあおぞら保育園","緑4","緑4-38-1","生後57日以上",6,"40 R4-5",1],
+ ["チェリッシュ曳舟保育園","東向島2","東向島2-36-3","生後57日以上",6,"42 R2-3"],
+ ["アスク両国保育園","石原2","石原2-7-3","生後57日以上",6,"42 H29-30",1],
+ ["向島ひまわり保育園","向島3","向島3-22-8","生後57日以上",6,"42 R4-5"],
+ ["オウトピア保育園","緑2","緑2-5-12","生後57日以上",6,"42 R6-7"],
+ ["そらまめ保育園すみだ横川","横川1","横川1-1-10","満3か月以上",6,"42 H27-28"],
+ ["ひらがなのツリーほいくえん","業平3","業平3-9-2","生後57日以上",6,"42 子3人以上",1],
+ ["キッズガーデン墨田八広","八広2","八広2-54-9","生後57日以上",12,"42 R2-3"],
+ ["ミアヘルサ保育園ひびき曳舟","東向島2","東向島2-42-5","生後57日以上",6,"34",1],
+ ["石原ここわ保育園","石原3","石原3-5-7","生後57日以上",6,"42 R6-7"],
+ ["まなびの森保育園曳舟","京島1","京島1-44-17","生後57日以上",6,"42 H26-27"],
+ ["わらべ向島保育園","向島3","向島3-19-5","生後57日以上",6,"42 R5-6",1],
+ ["わらべ向島保育園分園","向島4","向島4-2-14","生後57日以上",9,"-"],
+ ["うれしい保育園八広","八広4","八広4-33-9","生後57日以上",9,"-"],
+ ["にじいろ保育園向島","向島5","向島5-13-18","生後57日以上",6,"42 2人/R6-7"],
+ ["まなびの森保育園八広","八広6","八広6-27-6","生後57日以上",6,"42 R5-6"],
+ ["アスク緑保育園","緑1","緑1-5-9","生後57日以上",6,"42 R2-3"],
+ ["グローバルキッズ八広園","八広5","八広5-5-12","生後57日以上",6,"42 R5-6",1],
+ ["たんぽぽ保育所八広園","八広5","八広5-20-5","生後57日以上",6,"-",1],
+ ["キッズガーデン業平","業平3","業平3-1-6","生後57日以上",9,"42 H29-30"],
+ ["キッズガーデン第二墨田八広","八広6","八広6-34-1","生後57日以上",6,"42 R6-7"],
+ ["さくらさくみらい東向島","東向島3","東向島3-20-8","生後57日以上",6,"-"],
+ ["AIAI NURSERY 石原","石原4","石原4-37-4","満3か月以上",6,"42 R4-5"],
+ ["にじいろ保育園菊川","立川3","立川3-18-13","生後57日以上",6,"42 R3-4"],
+ ["グローバルキッズ曳舟保育園","京島3","京島3-62-5","生後57日以上",6,"42 R5-6"],
+ ["すこやか本所保育園","本所2","本所2-13-9","生後57日以上",6,"42 R1-2"],
+ ["タムスわんぱく保育園墨田","亀沢3","亀沢3-24-1","生後57日以上",15,"42 R3-4"],
+ ["クローバーこども園","八広1","八広1-6-22","生後57日以上",11,"42 R1-2",1],
+ ["あおやぎ保育園","東向島4","東向島4-37-17","生後57日以上",12,"42 R3-4"],
+ ["ぶれあ保育園・小村井（小規模・2歳まで）","立花5","立花5-24-11","生後57日以上",3,"-"],
+ ["ちゃのま保育園横川（小規模・2歳まで）","横川4","横川4-9-8","満3か月以上",2,"-"],
+ ["キャリー保育園東向島（小規模・2歳まで）","東向島5","東向島5-36-10","生後57日以上",2,"-",1],
+ ["未来っ子保育園東向島園（小規模・2歳まで）","東向島5","東向島5-18-1","生後57日以上",3,"▼30点未満"],
+ ["ル・アンジェ両国保育園（小規模・2歳まで）","両国1","両国1-17-6","生後57日以上",3,"▼30点未満"]
+].map(([n,c,ad,m,cap,cut,f])=>({n,c,ad,m,cap,f,y:{2026:cut}}));
+/* 過去の0歳クラス下限：墨田区「令和○年4月入園の第一次利用調整結果」各年版（施設名の直後の値を読み取ったもの）
+   並びは [令和7, 令和6, 令和5, 令和4, 令和3]。null はその年の表に施設がない */
+const HIST={
+ "江東橋保育園":["42 R4-5","34","42 H30-R1","42 H30-R1","42 H30-31"],
+ "横川橋保育園":["42 R5-6","-","-","41 2人/H27-28","-"],
+ "中川保育園":["-","-","-","-","-"],
+ "たちばな保育園":["▼30点未満","-","-","-","42 H29-30"],
+ "八広保育園":["-","-","-","-","-"],
+ "東あずま保育園":["-","-","-","-","-"],
+ "おむらい保育園":["-","-","-","35","-"],
+ "鐘ヶ淵北保育園":["▼30点未満","-","30","-","-"],
+ "梅若保育園":["42 子の人数より上","-","▼30点未満","42 R2-3","42 H16-20"],
+ "中川南保育園":["-","-","-","-","-"],
+ "しらひげ保育園":["-","-","-","-","-"],
+ "横川さくら保育園（2歳まで）":["-","-","-","42 R2-3","40 H28-29"],
+ "押上保育園":["42 R3-4","42 R4-5","45 2人/R1-2","42 R1-R2","42 子の人数より上"],
+ "亀沢保育園":["-","42 R1-2","40 R3-4","40 H29-30","42 H29-30"],
+ "長浦保育園":["-","-","45 子3人以上","-","38"],
+ "墨田みどり保育園":["42 子の人数より上","42 R3-4","42 R2-3","42 H30-R1","42 H28-29"],
+ "墨田みどり保育園分園":["42 H19-23","42 R2-3","42 H22-23","42 H28-29","42 H25-26"],
+ "ほがらか保育園":["-","-","-","-","-"],
+ "光の園保育学校（両国駅前分園）":["-","-","-","-","-"],
+ "厚生館保育園":["42 2人/R4-5","-","-","41 子3人以上","42 昭和"],
+ "共愛館保育園（認定こども園）":["-","-","-","-","42 H30-31"],
+ "菊川保育園":["-","42 R4-5","42 R3-4","42 H30-R1","▼30点未満"],
+ "興望館こども園":["-","-","-","-","40 子の人数より上"],
+ "東京愛育苑さゆり保育園":["▼30点未満","31","42 R3-4","-","42 H31-R2"],
+ "木ノ下保育園":["42 R4-5","42 R5-6","42 H29-30","45 2人/H27-28","42 2人/H29-30"],
+ "杉の子学園保育所":["-","35","42 昭和","42 子の人数より上","42 2人/H27-28"],
+ "ナースリー保育園":["42 R2-3","42 H28-29","42 R3-4","42 R1-R2","42 H30-31"],
+ "育正保育園":["-","▼30点未満","-","-","-"],
+ "こひつじ保育園":["34","40 H13-17","42 H30-R1","42 H30-R1","42 2人/H25-26"],
+ "わらべみどり保育園":["-","42 R4-5","-","-","42 H31-R2"],
+ "すみだ中和こころ保育園":["42 R4-5","36","42 H29-30","42 H28-29","42 H27-28"],
+ "両国・なかよし保育園":["42 R3-4","36","42 R1-2","36","42 H28-29"],
+ "小梅保育園":["42 R1-2","42 H27-28","42 H17-21","42 H28-29","42 子の人数より上"],
+ "すみだ川のほとりに笑顔咲くほいくえん":["-","-","42 R3-4","42 H30-R1","42 H29-30"],
+ "まなびの森保育園錦糸町":["42 R2-3","42 R1-2","42 R1-2","42 H24-25","42 H24-25"],
+ "グローバルキッズ押上園":["38","▼30点未満","42 R1-2","42 H29-30","42 H28-29"],
+ "両国すきっぷ保育園":["-","-","42 R2-3","-","42 H31-R2"],
+ "のびのび保育園":["-","-","-","42 H28-29","-"],
+ "すこやか錦糸保育園":["▼30点未満","39","40 R1-2","30","42 H29-30"],
+ "AIAI NURSERY 錦糸町":["-","42 R2-3","38","42 H29-30","42 H28-29"],
+ "うぃず東駒形保育園":["42 H30-R1","43 2人/R3-4","42 2人/昭和","42 H20-21","42 H27-28"],
+ "ベネッセ 菊川北保育園":["42 R1-2","42 R3-4","42 H22-23","42 R1-R2","36"],
+ "小学館アカデミーひきふね駅前保育園":["40 子の人数より上","-","▼30点未満","42 H29-30","42 H25-26"],
+ "チェリッシュあおぞら保育園":["42 R1-2","42 子の人数より上","42 R2-3","42 H29-30","42 H24-25"],
+ "チェリッシュ曳舟保育園":["42 R5-6",null,null,null,null],
+ "アスク両国保育園":["42 R1-2","42 R1-2","-","-","-"],
+ "向島ひまわり保育園":["-","42 R3-4","42 H30-R1","42 H29-30","42 H28-29"],
+ "オウトピア保育園":["32","▼30点未満","-","42 R2-3","42 H31-R2"],
+ "そらまめ保育園すみだ横川":["42 R2-3","43 2人/R4-5","42 H25-26","42 2人/H23-24","43 2人/H31-R2"],
+ "ひらがなのツリーほいくえん":["42 H26-27","42 R4-5","42 H25-26","42 H20-21","42 H30-31"],
+ "キッズガーデン墨田八広":["-","-","-","-","-"],
+ "ミアヘルサ保育園ひびき曳舟":["41 2人/R3-4","-","36","42 2人/H28-29","42 H28-29"],
+ "石原ここわ保育園":["-","-","-","-","42 H31-R2"],
+ "まなびの森保育園曳舟":["42 H30-R1","42 H30-R1","43 2人/H27-28","42 H27-28","42 H29-30"],
+ "わらべ向島保育園":["40 子の人数より上","42 R5-6","42 H30-R1","▼30点未満","42 H30-31"],
+ "わらべ向島保育園分園":["-","-","34","-","-"],
+ "うれしい保育園八広":["-","-","-","-","-"],
+ "にじいろ保育園向島":["42 R4-5","42 R2-3","-","45 2人/R1-R2","-"],
+ "まなびの森保育園八広":["42 R2-3","-","42 H12-16","42 H30-R1","42 H31-R2"],
+ "アスク緑保育園":["42 R2-3","42 R1-2","42 R2-3","42 H30-R1","42 H27-28"],
+ "グローバルキッズ八広園":["-","-","-","-","42 H29-30"],
+ "たんぽぽ保育所八広園":["-","-","-","-","-"],
+ "キッズガーデン業平":["42 R4-5","-","42 H30-R1","42 H29-30","-"],
+ "キッズガーデン第二墨田八広":["▼30点未満","-","42 R3-4","42 2人/H27-28","-"],
+ "さくらさくみらい東向島":["▼30点未満","-","42 H30-R1","42 H30-R1","42 H30-31"],
+ "AIAI NURSERY 石原":["42 R4-5","42 R1-2","42 R1-2","42 R1-R2","42 H30-31"],
+ "にじいろ保育園菊川":["42 R4-5","40 R2-3","42 R3-4","42 R1-R2","39"],
+ "グローバルキッズ曳舟保育園":["-","-","-","42 R2-3","▼30点未満"],
+ "すこやか本所保育園":["42 R2-3","42 R3-4","42 R1-2","-","-"],
+ "タムスわんぱく保育園墨田":["42 H28-29","42 R3-4","42 R2-3","40 2人/H28-29","42 H31-R2"],
+ "クローバーこども園":["42 R6-7","42 R1-2","42 昭和","42 2人/H26-27",null],
+ "あおやぎ保育園":["42 H30-R1","42 R5-6","40 2人/H7-11","42 R1-R2","42 H30-31"],
+ "ぶれあ保育園・小村井（小規模・2歳まで）":["40 R3-4","-","-","-","-"],
+ "ちゃのま保育園横川（小規模・2歳まで）":["-","42 R3-4","-","-","-"],
+ "キャリー保育園東向島（小規模・2歳まで）":["▼40点未満","-","-","-","-"],
+ "未来っ子保育園東向島園（小規模・2歳まで）":["36","-","-","▼30点未満","-"],
+ "ル・アンジェ両国保育園（小規模・2歳まで）":["-","-","42","▼30点未満",null]
+};
+const YEARS=[2026,2025,2024,2023,2022,2021];
+const YLABEL={2026:"R8",2025:"R7",2024:"R6",2023:"R5",2022:"R4",2021:"R3"};
+DATA.forEach(d=>{const h=HIST[d.n]||[];[2025,2024,2023,2022,2021].forEach((yy,i)=>d.y[yy]=h[i]===undefined?null:h[i])});
+/* 1歳クラス下限：同じ各年の結果PDFから、0歳クラスがある園は0歳欄の次の値（＊がある年はその2つ後）、
+   0歳クラスがない園は施設名の直後の値を1歳欄として読み取ったもの。
+   並びは [1歳定員, 令和8, 令和7, 令和6, 令和5, 令和4, 令和3]。null はその年の表に値がない */
+const ONE={
+ "江東橋保育園":[22,"42 R2-3","42 H1-8","42 H22-23","42 R1-2","42 2人/R1-R2","42 H25-26"],
+ "横川橋保育園":[15,"43 2人/H1-9","45 2人/R4-5","43 2人/R5-6","42 R1-2","42 H28-29","42 H26-27"],
+ "中川保育園":[15,"42 R6-7","▼30点未満","42 H1-7","40 昭和","42 R1-R2","42 H31-R2"],
+ "たちばな保育園":[10,"-","45 2人/H29-30","-","-","-","△43点以上"],
+ "八広保育園":[16,"42 R3-4","42 R5-6","42 R1-2","42 2人/H28-29","42 昭和","43 2人/H11-15"],
+ "東あずま保育園":[15,"42 R1-2","42 R2-3","41 R4-5","42 2人/H17-21","42 H30-R1","42 H27-28"],
+ "おむらい保育園":[15,"42 H25-26","42 H28-29","36","42 H29-30","42 昭和","42 H28-29"],
+ "鐘ヶ淵北保育園":[15,"-","-","-","-","-","-"],
+ "梅若保育園":[15,"42 子3人以上","42 R1-2","-","42 H1-6","42 H20-21","42 H28-29"],
+ "中川南保育園":[15,"42 H26-27","42 R3-4","42 昭和","42 H29-30","42 H25-26","42 H30-31"],
+ "しらひげ保育園":[15,"42 R4-5","-","▼30点未満","-","42 H28-29","40 H25-26"],
+ "横川さくら保育園（2歳まで）":[18,"-","-","-","-","42 H6-10","42 H26-27"],
+ "押上保育園":[14,"43 2人/R2-3","42 H1-8","42 子の人数より上","42 子3人以上","43 2人/昭和","42 2人/昭和"],
+ "亀沢保育園":[18,"43 2人/R6-7","45 2人/H19-23","42 子の人数より上","42 昭和","43 2人/H26-27","42 子3人以上"],
+ "長浦保育園":[15,"-","-","-","-","-","-"],
+ "墨田みどり保育園":[18,"42 R2-3","42 R3-4","42 R1-2","40 H30-R1","42 H29-30","42 H27-28"],
+ "墨田みどり保育園分園":[18,"42 H20-24","42 H29-30","42 H25-26","42 H30-R1","42 H27-28","42 H26-27"],
+ "ほがらか保育園":[10,"-","-","-","-","-","-"],
+ "厚生館保育園":[17,"42 R3-4","42 R1-2","42 R3-4","42 H26-27","42 子の人数より上","45 2人/H30-31"],
+ "共愛館保育園（認定こども園）":[22,"42 子3人以上","42 R2-3","42 R2-3","42 H29-30","42 H26-27","42 H28-29"],
+ "菊川保育園":[18,"42 R4-5","42 R3-4","42 H22-23","41 2人/R1-2","-","42 2人/H30-31"],
+ "興望館こども園":[18,"42 H20-24","45 2人/H1-8","45 子の人数より上","-","42 2人/H21-22","42 子の人数より上"],
+ "東京愛育苑さゆり保育園":[12,"42 子の人数より上","42 昭和","42 2人/H27-28","42 子3人以上","42 H26-27","42 昭和"],
+ "木ノ下保育園":[5,"45","42","42","45","42","△43点以上"],
+ "杉の子学園保育所":[20,"42 R2-3","42 R3-4","42 H30-R1","42 H1-6","42 昭和","42 昭和"],
+ "ナースリー保育園":[10,"42 H30-R1","42 R4-5",null,null,"48","42"],
+ "育正保育園":[15,"42 R4-5","42 H30-R1","▼30点未満","▼30点未満","42 H28-29","42 H28-29"],
+ "こひつじ保育園":[13,"42 R1-2","42 H14-18","42 H26-27","42 H25-26","42 子の人数より上","42 H26-27"],
+ "わらべみどり保育園":[15,"42 R3-4","42 昭和","42 H27-28","42 R2-3","42 H30-R1","42 H16-20"],
+ "すみだ中和こころ保育園":[10,"42 R2-3","42 H24-25","42 2人/H22-23","42 H29-30","42 H29-30","45 2人/H26-27"],
+ "両国・なかよし保育園":[15,"42 2人/H29-30","42 H1-8","42 子の人数より上","42 H29-30","42 H16-20","42 H23-24"],
+ "小梅保育園":[6,"43 2人/R6-7","42 子の人数より上","42 2人/H28-29","43 子の人数より上","43 子の人数より上","42 子の人数より上"],
+ "すみだ川のほとりに笑顔咲くほいくえん":[11,"42 R4-5","42 R3-4","42 R2-3","42 R3-4","42 昭和","42 2人/H26-27"],
+ "まなびの森保育園錦糸町":[12,"42 2人/R6-7","42 H1-8","42 R2-3","42 H28-29","42 H29-30","42 H23-24"],
+ "グローバルキッズ押上園":[18,"42 H28-29","42 H25-26","42 H25-26","42 H27-28","42 H24-25","42 H26-27"],
+ "両国すきっぷ保育園":[10,"42","45","△43点以上","42 H30-R1","45","45"],
+ "のびのび保育園":[8,"▼40点未満","-","▼30点未満","-","40","▼30点未満"],
+ "すこやか錦糸保育園":[12,null,null,null,null,"-","42"],
+ "AIAI NURSERY 錦糸町":[6,"▼30点未満","△43点以上","43","-","43","△43点以上"],
+ "うぃず東駒形保育園":[8,"45","43 2人/R4-5","45","43 子の人数より上","43","43"],
+ "ベネッセ 菊川北保育園":[11,"42 H30-R1","42 2人/H30-R1","42 H27-28","42 H17-21","42 H24-25","45 2人/H27-28"],
+ "小学館アカデミーひきふね駅前保育園":[10,"42","45","42","45","45","45"],
+ "チェリッシュあおぞら保育園":[12,"42 H10-14","42 H19-23","42 2人/H29-30","45 2人/H30-R1","45 2人/H30-R1","42 H11-15"],
+ "チェリッシュ曳舟保育園":[12,"42 2人/R1-2","42 H30-R1",null,null,null,null],
+ "アスク両国保育園":[12,"43 子の人数より上","42 R2-3","42 H29-30","42 R1-2","42 H26-27","42 H24-25"],
+ "向島ひまわり保育園":[10,"42 2人/R2-3","42 昭和","42 昭和","45 2人/H30-R1","42 H20-21","42 2人/H22-23"],
+ "オウトピア保育園":[8,"42","42","42 子の人数より上","42","42 H30-R1","45"],
+ "そらまめ保育園すみだ横川":[18,"42 R1-2","42 2人/H29-30","42 H26-27","42 H29-30","42 昭和","42 子の人数より上"],
+ "ひらがなのツリーほいくえん":[10,"45 子の人数より上","43 子3人以上","42 2人/H27-28","42 H17-21","42 H24-25","45 2人/H26-27"],
+ "キッズガーデン墨田八広":[15,"45 2人/R2-3","42 子3人以上","42 2人/H27-28","45 2人/R1-2","42 H29-30","43 子の人数より上"],
+ "ミアヘルサ保育園ひびき曳舟":[8,"42","42","43","45","42 2人/H27-28","42 子3人以上"],
+ "石原ここわ保育園":[10,"42 H27-28","42 R1-2","42 R2-3","42 R2-3","42 H27-28","42 H27-28"],
+ "まなびの森保育園曳舟":[11,"42 昭和","42 H23-24","42 2人/H8-12","42 子の人数より上","42 子3人以上","42 H16-20"],
+ "わらべ向島保育園":[6,"-","-","-","△48点以上","45","42"],
+ "わらべ向島保育園分園":[10,"42 子3人以上","42","45","42 H27-28","42","42 H30-31"],
+ "うれしい保育園八広":[13,"42 2人/昭和","42 R2-3","42 2人/H24-25","42 H29-30","42 H30-R1","42 H30-31"],
+ "にじいろ保育園向島":[9,"42 H25-26","42 H27-28","42 H28-29","41 子3人以上","39","43 2人/昭和"],
+ "まなびの森保育園八広":[11,"42 H20-24","42 R2-3","42 H28-29","45 2人/H29-30","42 H29-30","42 H6-10"],
+ "アスク緑保育園":[9,"42 H24-25","42 子の人数より上","42 2人/R1-2","42 2人/H29-30","43 2人/H28-29","45 2人/H29-30"],
+ "グローバルキッズ八広園":[12,"43 2人/H1-9","42 R2-3","42 2人/R2-3","42 R1-2","42 2人/H27-28","43 2人/H31-R2"],
+ "たんぽぽ保育所八広園":[10,"-","-","45","42 H12-16","42","42 H22-23"],
+ "キッズガーデン業平":[12,"42 H25-26","42 子の人数より上","42 H23-24","42 H24-25","42 子の人数より上","45 子3人以上"],
+ "キッズガーデン第二墨田八広":[10,"42 R3-4","-","42 R3-4","42 H30-R1","42 H29-30","42 H29-30"],
+ "さくらさくみらい東向島":[9,"43 2人/R1-2","42 R3-4","42 H28-29","42 H27-28","45 2人/H21-22","42 H29-30"],
+ "AIAI NURSERY 石原":[10,"42 H1-9","42 H29-30","42 R2-3","42 R2-3","45 2人/H25-26","42 H28-29"],
+ "にじいろ保育園菊川":[10,"42 R1-2","42 H27-28","42 H29-30","40 H28-29","42 R1-R2","42 昭和"],
+ "グローバルキッズ曳舟保育園":[12,"42 昭和","42 H26-27","42 H13-17","42 R1-2","42 R1-R2","42 H1-5"],
+ "すこやか本所保育園":[10,"42 R2-3","42 R4-5","43 2人/R5-6","▼30点未満","42 H29-30","42 H27-28"],
+ "タムスわんぱく保育園墨田":[18,"45 2人/H28-29","45 2人/R2-3","42 2人/H22-23","42 昭和","45 2人/H28-29","42 H24-25"],
+ "クローバーこども園":[19,"42 昭和","42 子の人数より上","42 2人/昭和","42 子の人数より上","43 子の人数より上",null],
+ "あおやぎ保育園":[20,"43 R4-5","42 昭和","42 H25-26","42 昭和","42 H6-10","42 2人/昭和"],
+ "ぶれあ保育園・小村井（小規模・2歳まで）":[8,"40 子の人数より上","-","-","-","-","▼30点未満"],
+ "ちゃのま保育園横川（小規模・2歳まで）":[8,"▼30点未満","30",null,"42 H29-30","42 H29-30","42 H27-28"],
+ "キャリー保育園東向島（小規模・2歳まで）":[10,null,null,"-","-","-","-"],
+ "未来っ子保育園東向島園（小規模・2歳まで）":[8,"42 R3-4","-","-","40 子の人数より上","42 R1-R2","-"],
+ "ル・アンジェ両国保育園（小規模・2歳まで）":[8,"42 R3-4","42 R2-3","42 R3-4","-","-",null]
+};
+/* 0歳クラスがなく1歳クラスから受け入れる園：[園名, 町丁目, 所在地, 1歳定員, 令和8〜令和3の1歳下限] */
+const ONLY1=[
+ ["江東橋保育園分園（2歳まで）","亀沢3","亀沢3-12-5",9,["▼30点未満","-","42 R2-3","38","-","42 H28-29"]],
+ ["花園保育園","東向島3","東向島3-16-2",20,["42 R6-7","-","42 R3-4","35","42 H30-R1","42 H28-29"]],
+ ["福神橋保育園","文花1","文花1-30-21",7,["42 R5-6","▼30点未満","30","-","40 2人/H25-26","42 H29-30"]],
+ ["文花保育園","文花1","文花1-24-5",15,["42 R3-4","38","42 R3-4","36","40 子3人以上","42 H30-31"]],
+ ["東駒形保育園","東駒形4","東駒形1-6-8（仮園舎 東駒形4）",8,["42 R3-4","42 R2-3","42 H30-R1","42 H30-R1","42 H30-R1","42 子の人数より上"]],
+ ["太平保育園","太平1","太平1-13-10",10,["42 2人/H29-30","42 H9-13","42 H30-R1","42 R1-2","42 H16-20","42 子の人数より上"]],
+ ["立川保育園","立川1","立川1-5-2",12,["42 R3-4","42 R4-5","42 H30-R1","42 R1-2","42 R1-R2","42 H27-28"]],
+ ["寺島保育園","東向島1","東向島1-23-10",14,["42 R2-3","30","42 H29-30","-","-","42 H29-30"]],
+ ["横川さくら保育園分園（2歳まで）","立花1","立花1-23-5",15,["-","-","-","-","-","-"]],
+ ["きんし保育園","江東橋4","江東橋4-30-2",15,["42 R5-6","▼30点未満","-","39","42 H30-R1","42 H27-28"]],
+ ["水神保育園","堤通2","堤通2-6-9",14,["-","-","-","-","-","▼30点未満"]],
+ ["すみだ保育園","墨田4","墨田4-22-4",10,["▼30点未満","-","▼30点未満","-","-","-"]],
+ ["光の園保育学校（本園）","東駒形4","東駒形4-6-2",24,["42 R4-5","42 R1-2","42 H29-30","42 H28-29","42 2人/R3-4","42 H1-5"]],
+ ["本所たから保育園","東駒形4","東駒形4-4-7",9,["42 H1-9","42 H29-30","42 H22-23","42 H30-R1","42 H28-29","42 2人/H25-26"]],
+ ["キッズパートナー菊川","菊川3","菊川3-19-2",12,["42 R5-6","42 R5-6","42 R3-4","-","-","42 H28-29"]],
+ ["クオリスキッズ菊川保育園","立川4","立川4-13-29",10,["42 R1-2","42 R3-4","42 R1-2","-","38",null]],
+ ["ベネッセ菊川保育園","立川4","立川4-6-6",10,["42 H30-R1","42 H28-29","42 H27-28","42 H30-R1",null,null]],
+ ["マミーズエンジェル墨田みなみ保育園","亀沢4","亀沢4-24-13",5,["40 H15-19","42",null,null,null,null]],
+ ["ぶどうの木保育室（小規模・2歳まで）","東駒形4","東駒形4-4-8",12,[null,null,null,null,null,"-"]],
+ ["八広ぶどうの木保育室（小規模・2歳まで）","八広6","八広6-37-5",12,[null,null,null,null,null,null]],
+ ["ちゃのま保育園両国（小規模・2歳まで）","緑1","緑1-20-12",6,["33","42 R4-5","42 R3-4","-","-","42 H28-29"]]
+];
+DATA.forEach(d=>{d.has0=true;d.y0=d.y;const o=ONE[d.n];d.cap1=o?o[0]:0;d.y1={};YEARS.forEach((yy,i)=>d.y1[yy]=o?o[i+1]:null)});
+ONLY1.forEach(([n,c,ad,cap1,v])=>{const y1={};YEARS.forEach((yy,i)=>y1[yy]=v[i]);DATA.push({n,c,ad,m:"",cap:0,f:0,has0:false,y0:{},cap1,y1})});
+function dist(a,b){const R=6371,r=Math.PI/180,p=CHO[a],q=CHO[b];if(!p||!q)return null;const dl=(q[0]-p[0])*r,dg=(q[1]-p[1])*r;const x=dg*Math.cos((p[0]+q[0])/2*r);return R*Math.sqrt(dl*dl+x*x)}
+
+/* ---------- 状態 ---------- */
+const DEFAULT={year:2026,age:0,home:"",radius:2,sort:"dist",baseF:"w20",baseM:"w20",adj:{},single:"s0",welfare:"w0",pri:{p14:true},kids:1,since:"",filter:"all",sib:""};
+/* 保存データは古い版や壊れた値のことがあるので、知っている値だけを取り込む */
+function sanitize(s){
+  const d=JSON.parse(JSON.stringify(DEFAULT));if(!s||typeof s!=="object")return d;
+  const pick=(k,ok)=>{if(ok(s[k]))d[k]=s[k]};
+  const flags=(k,list)=>{if(s[k]&&typeof s[k]==="object")d[k]=Object.fromEntries(list.map(x=>[x.k,!!s[k][x.k]]))};
+  pick("age",v=>v===0||v===1);
+  pick("home",v=>v===""||Object.hasOwn(CHO,v));
+  pick("radius",v=>[1,1.5,2,3,99].includes(v));
+  pick("sort",v=>["dist","judge","wins"].includes(v));
+  pick("baseF",v=>Object.hasOwn(BASEMAP,v));pick("baseM",v=>Object.hasOwn(BASEMAP,v));
+  flags("adj",ADJ);flags("pri",PRI);
+  pick("single",v=>SINGLE.some(x=>x[0]===v));pick("welfare",v=>WELFARE.some(x=>x[0]===v));
+  pick("kids",v=>Number.isInteger(v)&&v>=1&&v<=9);
+  pick("since",v=>v===""||(typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)));
+  pick("filter",v=>["all","in","edge","out"].includes(v));
+  pick("sib",v=>v===""||DATA.some(x=>x.n===v));
+  return d;
+}
+let state=sanitize(null);
+try{state=sanitize(JSON.parse(localStorage.getItem("hokatsu8")||"null"))}catch(e){}
+function save(){try{localStorage.setItem("hokatsu8",JSON.stringify(state))}catch(e){}}
+const $=id=>document.getElementById(id);
+const sign=v=>v>0?`+${v}`:`${v}`;
+
+/* ---------- 入力UIの組み立て ---------- */
+function fillSelect(sel){sel.innerHTML=BASE.map(g=>`<optgroup label="${g.g}">${g.items.map(([id,p,,l])=>`<option value="${id}">${l}（${p}点）</option>`).join("")}</optgroup>`).join("")}
+fillSelect($("baseF"));fillSelect($("baseM"));
+$("adjMain").innerHTML=ADJ.map(a=>`<label class="opt" for="${a.k}"><input type="checkbox" id="${a.k}"><span>${a.n}番 ${a.t}${a.s?`<small>${a.s}</small>`:""}</span><span class="v ${a.v>0?"plus":"minus"}">${sign(a.v)}</span></label>`).join("");
+const radios=(list,name)=>list.map(([id,v,t])=>`<label class="opt" for="${id}"><input type="radio" name="${name}" id="${id}" value="${id}"><span>${t}</span><span class="v ${v>0?"plus":""}">${v?sign(v):""}</span></label>`).join("");
+$("adjSingle").innerHTML=radios(SINGLE,"single");
+$("adjWelfare").innerHTML=radios(WELFARE,"welfare");
+$("sib").innerHTML=`<option value="">選んでください</option>`+DATA.map(d=>`<option value="${d.n}">${d.n}</option>`).join("");
+$("priGroup").innerHTML=PRI.map(p=>`<label class="opt" for="${p.k}"><input type="checkbox" id="${p.k}"><span>${p.n}番 ${p.t}</span><span class="v"></span></label>`).join("");
+
+{const towns={};Object.keys(CHO).forEach(k=>{const t=k.replace(/\d+$/,"");(towns[t]=towns[t]||[]).push(k)});
+ $("home").innerHTML=`<option value="">選んでください</option>`+Object.entries(towns).map(([t,ks])=>`<optgroup label="${t}">${ks.map(k=>`<option value="${k}">${k.replace(/(\d+)$/,"$1丁目")}</option>`).join("")}</optgroup>`).join("");}
+function syncInputs(){
+  $("home").value=state.home;$("radius").value=String(state.radius);$("sort").value=state.sort;
+  $("baseF").value=state.baseF;$("baseM").value=state.baseM;
+  ADJ.forEach(a=>$(a.k).checked=!!state.adj[a.k]);
+  $(state.single).checked=true;$(state.welfare).checked=true;
+  PRI.forEach(p=>$(p.k).checked=!!state.pri[p.k]);
+  $("kids").value=state.kids;$("since").value=state.since;
+  $("sib").value=state.sib;$("sibWrap").hidden=!state.adj.a15;
+}
+
+/* ---------- 計算 ---------- */
+function compute(){
+  const F=BASEMAP[state.baseF],M=BASEMAP[state.baseM];
+  const lines=[["父の基準指数（"+F.l+"）",F.p],["母の基準指数（"+M.l+"）",M.p]];
+  const warns=[];
+  let adj=0;
+  const types=[F.t,M.t];
+  ADJ.forEach(a=>{
+    if(!state.adj[a.k])return;
+    let ok=true;
+    if(a.k==="a21"&&state.adj.a18){ok=false;warns.push("21番（育休中）と18番（認可外）は両方付かず、18番だけが適用されます。")}
+    if(a.k==="a21"&&!types.includes("就労")){ok=false;warns.push("21番（育休中）は、基準指数が就労の人がいる場合だけ付きます。")}
+    if(a.k==="a8"&&!(state.baseF==="hosp"||state.baseM==="hosp")){ok=false;warns.push("8番は、基準指数が入院の人がいる場合だけ付きます。")}
+    if(a.k==="a9"&&!types.includes("求職")){ok=false;warns.push("9番は、基準指数が求職活動の人がいる場合だけ付きます。")}
+    if((a.k==="a19"||a.k==="a20")&&!types.includes("就労")){ok=false;warns.push(`${a.n}番は、就労している保護者が対象です。`)}
+    if(a.k==="a15"){
+      if(state.sib)lines.push([`15番 きょうだい在園（${state.sib}の判定だけ）`,a.v]);
+      else warns.push("15番は、きょうだいが在園している園を選ぶと、その園の判定だけに+3を付けます。");
+      return;
+    }
+    if(ok){adj+=a.v;lines.push([`${a.n}番 ${a.t.replace(/（.*?）/g,"")}`,a.v])}
+  });
+  const s=SINGLE.find(x=>x[0]===state.single),w=WELFARE.find(x=>x[0]===state.welfare);
+  if(s[1]){adj+=s[1];lines.push([s[2],s[1]])}
+  if(w[1]){adj+=w[1];lines.push([w[2],w[1]])}
+  if(!state.adj.a21&&!state.adj.a18)warns.push("育休加点（21番）も認可外加点（18番）もない状態です。人気園の多くは42点（20＋20＋2）が下限でした。");
+  const total=F.p+M.p+adj;
+  // 優先順位
+  const pr=[];if(state.pri.p1)pr.push(1);if(F.t==="不存在"||M.t==="不存在")pr.push(2);["p3","p4","p5","p6","p7"].forEach((k,i)=>{if(state.pri[k])pr.push(i+3)});
+  const topPri=pr.length?Math.min(...pr):99;
+  // 8〜11番：下限の世帯は最上位とみなすので、届かない番号を控えておく（父子世帯は9・10番を父で判定）
+  const mom=M.t==="不存在"?F:M,dad=M.t==="不存在"?null:F;
+  const weak=[];if(F.p+M.p<40)weak.push(8);if(mom.p<20)weak.push(9);if(TYPEORDER[mom.t]>1)weak.push(10);if(dad&&dad.t!=="不存在"&&TYPEORDER[dad.t]>1)weak.push(11);
+  // 年月日は文字列から読む（new Date は UTC 扱いになり、タイムゾーンによって前日にずれる）
+  let fy=null;{const m=state.since.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)fy=+m[2]>=4?+m[1]:+m[1]-1}
+  if(state.adj.a24&&state.pri.p14)warns.push("24番（3か月以上の滞納）と14番（滞納がない）は両立しません。同点のときは滞納ありとして判定します。");
+  return {total,lines,warns,topPri,weak,kids:Math.max(1,+state.kids||1),fy,arrears:!state.pri.p14||!!state.adj.a24,sib:state.adj.a15&&state.sib?state.sib:""};
+}
+
+/* 「R1-2」「H20-24」「昭和」を年度範囲に */
+function era(s){const m=s.match(/^([HR])(\d+)$/);if(!m)return null;return (m[1]==="H"?1988:2018)+ +m[2]}
+function bucket(lbl){
+  if(lbl==="昭和")return[0,1988];
+  const p=lbl.split("-");if(p.length!==2)return null;
+  const a=era(p[0]);let b=era(p[1]);if(b===null&&/^\d+$/.test(p[1]))b=(p[0][0]==="H"?1988:2018)+ +p[1];
+  if(a===null||b===null)return null;return[a,Math.max(a,b-1)];
+}
+function judge(cut,c){
+  if(cut===null||cut===undefined)return["na","この年は表に園がありません"];
+  if(cut==="-")return["in","一次の後も空きが残りました"];
+  {const v=cut.match(/^▼(\d+)点未満/);if(v)return c.total>=+v[1]?["in",`${v[1]}点未満の世帯まで入れました`]:["edge",`${v[1]}点未満で決まり、正確な下限は非公表`]}
+  {const v=cut.match(/^△(\d+)点以上/);if(v)return c.total<+v[1]?["out",`下限は${v[1]}点以上`]:["edge",`下限は${v[1]}点以上で、正確な値は非公表`]}
+  const m=cut.match(/^(\d+)\s*(.*)$/);if(!m)return["na",""];
+  const n=+m[1],rest=m[2].trim();
+  if(c.total>n)return["in",`下限${n}点より高い`];
+  if(c.total<n)return["out",`下限は${n}点`];
+  if(c.topPri<99){
+    if(/子の人数/.test(rest)||rest==="")return["edge",`同点。優先順位${c.topPri}番に当たるが、下限の世帯の状況は不明`];
+    return["in",`同点で、優先順位${c.topPri}番に当たる`];
+  }
+  if(rest==="")return["edge","同点。下限の世帯の優先順位は非公表"];
+  if(/子の人数/.test(rest))return c.weak.length?["out","同点で、子の人数より上の優先順位で決まった"]:["edge","同点で、子の人数より上の優先順位（1〜12番）で決まった。下限の世帯の状況は非公表"];
+  const r=tieAfter12(rest,c);
+  if(c.weak.length&&r[0]==="in")return["edge",`同点。優先順位${c.weak.join("・")}番で下限の世帯に届かない可能性がある`];
+  return r;
+}
+/* 13番以降（子どもの人数・滞納・住んでいる期間）での比較 */
+function tieAfter12(rest,c){
+  if(/子3人/.test(rest))return c.kids>=3?["edge","同点で、子3人以上の世帯どうし"]:["out","同点で、子3人以上の世帯が優先"];
+  let need=1,yr=rest;const km=rest.match(/^(\d)人\/(.*)$/);if(km){need=+km[1];yr=km[2]}
+  if(c.kids>need)return["in",`同点で、子どもが${c.kids}人で優先`];
+  if(c.kids<need)return["out","同点で、子どもが多い世帯が優先"];
+  if(c.arrears)return["out","同点で、保育料の滞納がない世帯が優先"];
+  const b=bucket(yr);if(!b||c.fy===null)return["na","住民となった年月日を入れてください"];
+  if(c.fy<b[0])return["in","同点で、住んでいる期間が長い"];
+  if(c.fy<=b[1])return["edge","同点で、住み始めた区分も同じ"];
+  return["out","同点で、より長く住んでいる世帯まで"];
+}
+
+/* ---------- 描画 ---------- */
+const SYM={in:"○",edge:"△",out:"×",na:"－"};
+const fmt=v=>v===null||v===undefined?"表になし":v==="-"?"空きあり":v;
+const LABEL={in:"入れた",edge:"境目",out:"厳しい",na:"不明"};
+function render(){
+  const c=compute();
+  $("total").innerHTML=`${c.total}<small>点</small>`;$("barTotal").textContent=c.total;
+  $("ptsF").innerHTML=`<b>${BASEMAP[state.baseF].p}</b> 点`;$("ptsM").innerHTML=`<b>${BASEMAP[state.baseM].p}</b> 点`;
+  $("breakdown").innerHTML=c.lines.map(([l,v],i)=>`<div><span>${l}</span><span class="${i>1?(v>0?"plus":"minus"):""}">${i>1?sign(v):v}</span></div>`).join("");
+  $("warn").innerHTML=c.warns.join("<br>");
+  const age=state.age;
+  const rows=DATA.filter(d=>age===1?d.cap1>0:d.has0).map(d=>{const Y=age===1?d.y1:d.y0;const sib=d.n===c.sib,cc=sib?{...c,total:c.total+3}:c;const js={};YEARS.forEach(yy=>js[yy]=judge(Y[yy],cc));
+    const known=YEARS.filter(yy=>js[yy][0]!=="na"),wins=known.filter(yy=>js[yy][0]==="in").length;
+    return {...d,y:Y,d:dist(state.home,d.c),cut:Y[state.year],j:js[state.year],js,wins,known:known.length,sib,total:cc.total}});
+  document.querySelectorAll("#age button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.v===age));
+  const inRange=r=>!state.home||state.radius>=99||(r.d!==null&&r.d<=state.radius);
+  const inR=rows.filter(inRange);
+  const cnt={in:0,edge:0,out:0};inR.forEach(r=>{if(cnt[r.j[0]]!==undefined)cnt[r.j[0]]++});
+  $("summary").innerHTML=[["all","全部",inR.length,""],["in","入れた",cnt.in,"c-in"],["edge","境目",cnt.edge,"c-edge"],["out","厳しい",cnt.out,"c-out"]]
+    .map(([k,l,v,cl])=>`<button type="button" class="chip ${cl}" id="f-${k}" data-f="${k}" aria-pressed="${state.filter===k}"><b>${v}</b><span>${l}</span></button>`).join("");
+  $("summary").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{state.filter=b.dataset.f;save();render()});
+  clearTimeout(window.__st);window.__st=setTimeout(()=>{const st=$("status");if(st)st.textContent=`合計${c.total}点。${state.age}歳クラスで、入れた${cnt.in}園、境目${cnt.edge}園、厳しい${cnt.out}園。`},600);
+  $("barCnt").innerHTML=`<span class="plus">入れた ${cnt.in}</span><span style="color:var(--edge)">境目 ${cnt.edge}</span><span class="minus">厳しい ${cnt.out}</span>`;
+  const order={in:0,edge:1,out:2,na:3};
+  const dd=r=>r.d===null?0:r.d;
+  const list=rows.filter(r=>(state.filter==="all"||r.j[0]===state.filter)&&inRange(r))
+    .sort((x,y)=>state.sort==="judge"?(order[x.j[0]]-order[y.j[0]])||(dd(x)-dd(y)):state.sort==="wins"?((y.wins/(y.known||1))-(x.wins/(x.known||1)))||(dd(x)-dd(y)):(dd(x)-dd(y)));
+  const sortName={dist:"近い順",judge:"見込みが良い順",wins:"過去に入れた割合が高い順"}[state.sort];
+  const head=state.home?`<h2>${state.home.replace(/(\d+)$/,"$1丁目")}から${state.radius>=99?"":`${state.radius}km以内の`}園<small>${list.length}園・${sortName}</small></h2>`:`<h2>墨田区内のすべての園<small>${list.length}園。住んでいる場所を選ぶと近い順に並び、範囲で絞り込めます</small></h2>`;
+  const body=list.length?list.map(r=>`<article class="card">
+      <h3 class="name">${r.n}</h3><span class="pill p-${r.j[0]}"><span aria-hidden="true">${SYM[r.j[0]]} </span>${LABEL[r.j[0]]}<span class="sr">（令和8年の結果との比較）</span></span>
+      <div class="meta">${r.d!==null?`<span>約${r.d.toFixed(1)}km</span>`:""}<span>${r.ad}</span>${r.sib?`<span>15番の+3を含めて${r.total}点で判定</span>`:""}${age===1?`<span>1歳定員 ${r.cap1}人</span>`:`<span>0歳 ${r.m}</span><span>0歳定員 ${r.cap}人</span>`}</div>
+      <div class="cut"><span class="why">${YLABEL[state.year]}の${age}歳下限</span><code>${fmt(r.cut)}</code><span class="why">${r.j[1]}</span>${(age===0&&r.f)||age===1?'<span class="flag">要確認</span>':""}</div>
+      <ul class="years" aria-label="年ごとの判定">${YEARS.map(yy=>`<li class="yr y-${r.js[yy][0]}${yy===state.year?" cur":""}"><i><span aria-hidden="true">${SYM[r.js[yy][0]]} </span>${YLABEL[yy]}</i><b>${fmt(r.y[yy])}</b><span class="sr">：${LABEL[r.js[yy][0]]}。${r.js[yy][1]}</span></li>`).join("")}</ul>
+      <div class="hist">過去${r.known}年のうち、この条件で入れたのは ${r.wins} 年</div>
+    </article>`).join(""):`<p class="empty">この条件に当てはまる園はありません。範囲を広げてみてください。</p>`;
+  const legend=`<div class="legend" aria-label="色の見方">
+    <p class="lg-title">見方</p>
+    <p>判定は色と記号（○ △ × －）の両方で示しています。</p>
+    <p>右上の判定は、最新の令和8年4月入園（一次）の結果と比べたものです。下の年ごとの欄は、上に入力した条件をその年の${age}歳クラスの下限に当てはめた結果で、欄の中の文字はその年の下限です。${age===1?"1歳クラスの値は、区のPDFの文字から0歳欄の次の値として読み取ったもので、列のずれがあり得るため全園に「要確認」を付けています。":""}</p>
+    <ul>
+      <li><span class="yr y-in" aria-hidden="true"><i>○</i></span><span class="sr">○、</span>入れた：下限より点数が高い、同点で優先順位が上、または空きが残った</li>
+      <li><span class="yr y-edge" aria-hidden="true"><i>△</i></span><span class="sr">△、</span>境目：同点で優先順位も同じ区分、または下限の詳細が非公表</li>
+      <li><span class="yr y-out" aria-hidden="true"><i>×</i></span><span class="sr">×、</span>厳しい：下限より点数が低い、または同点で優先順位が届かない</li>
+      <li><span class="yr y-na" aria-hidden="true"><i>－</i></span><span class="sr">－、</span>不明：その年の表に園がない（開園前など）</li>
+    </ul>
+    <p>「空きあり」は一次の後も空きがあった年、「42 R1-2」は42点で令和元年度から区民の世帯まで入れた、「2人/」は子ども2人の世帯まで、という意味です。</p>
+  </div>`;
+  $("areas").innerHTML=`<section class="area">${head}${legend}<div class="list">${body}</div></section>`;
+}
+
+/* ---------- イベント ---------- */
+document.querySelectorAll("#age button").forEach(b=>b.onclick=()=>{state.age=+b.dataset.v;save();render()});
+$("home").onchange=e=>{state.home=e.target.value;save();render()};
+$("radius").onchange=e=>{state.radius=+e.target.value;save();render()};
+$("sort").onchange=e=>{state.sort=e.target.value;save();render()};
+$("baseF").onchange=e=>{state.baseF=e.target.value;save();render()};
+$("baseM").onchange=e=>{state.baseM=e.target.value;save();render()};
+ADJ.forEach(a=>$(a.k).onchange=e=>{state.adj[a.k]=e.target.checked;$("sibWrap").hidden=!state.adj.a15;save();render()});
+$("sib").onchange=e=>{state.sib=e.target.value;save();render()};
+SINGLE.forEach(([id])=>$(id).onchange=()=>{state.single=id;save();render()});
+WELFARE.forEach(([id])=>$(id).onchange=()=>{state.welfare=id;save();render()});
+PRI.forEach(p=>$(p.k).onchange=e=>{state.pri[p.k]=e.target.checked;save();render()});
+$("kids").oninput=e=>{state.kids=+e.target.value||1;save();render()};
+$("since").oninput=e=>{state.since=e.target.value;save();render()};
+$("reset").onclick=()=>{state=JSON.parse(JSON.stringify(DEFAULT));save();syncInputs();render()};
+document.documentElement.lang="ja";
+document.querySelectorAll('a[target="_blank"]').forEach(a=>{if(!a.querySelector(".sr")){const t=document.createElement("span");t.className="sr";t.textContent="（新しいタブで開きます）";a.appendChild(t)}});
+syncInputs();render();
+</script>
+</body>
+</html>
