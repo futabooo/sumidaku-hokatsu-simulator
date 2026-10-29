@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sumidaku-hokatsu-simulator.futabooo.workers.dev/sitemap.xml
